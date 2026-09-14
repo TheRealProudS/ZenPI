@@ -8,7 +8,7 @@ if str(BACKEND_DIR) not in sys.path:
 
 import asyncio
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Response
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -133,10 +133,11 @@ if (frontend_dir / "index.html").exists():
 
     @app.get("/{full_path:path}")
     def serve_frontend(full_path: str):
-        file_path = frontend_dir / full_path
-        if file_path.is_file():
-            return HTMLResponse(file_path.read_text(encoding="utf-8"))
-        return HTMLResponse((frontend_dir / "index.html").read_text(encoding="utf-8"))
+        if full_path:
+            file_path = frontend_dir / full_path
+            if file_path.is_file():
+                return FileResponse(file_path)
+        return FileResponse(frontend_dir / "index.html")
 
 if __name__ == "__main__":
     import uvicorn
