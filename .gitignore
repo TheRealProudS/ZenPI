@@ -7,3 +7,5 @@ venv/
 .DS_Store
 dist/
 node_modules/
+config.json
+backend/config.json
