@@ -53,14 +53,14 @@
     .glass-card:hover {
       border-color: rgba(56, 189, 248, 0.3);
     }
-    .tab-active {
-      background: rgba(56, 189, 248, 0.15);
+    .nav-active {
+      background: rgba(56, 189, 248, 0.12);
       color: #38bdf8;
-      border-color: rgba(56, 189, 248, 0.4);
+      border-color: rgba(56, 189, 248, 0.35);
     }
   </style>
 </head>
-<body class="min-h-screen bg-zdark text-slate-100 flex flex-col relative bg-grid">
+<body class="h-screen w-screen overflow-hidden bg-zdark text-slate-100 flex flex-col relative bg-grid">
 
   <!-- Top Navbar -->
   <header class="border-b border-zborder glass-card !rounded-none sticky top-0 z-50 px-6 py-3 flex items-center justify-between">
@@ -94,35 +94,93 @@
         <span class="w-2 h-2 rounded-full bg-zemerald animate-pulse"></span>
         <span>Spannung Normal</span>
       </div>
+      <button onclick="handleLogout()" class="px-2.5 py-1.5 rounded-lg border border-white/10 text-slate-400 hover:text-white hover:bg-white/5 text-xs font-mono">
+        Abmelden
+      </button>
     </div>
   </header>
 
-  <!-- Navigation Tabs -->
-  <div class="max-w-7xl w-full mx-auto px-4 sm:px-6 pt-4">
-    <nav class="flex space-x-2 overflow-x-auto pb-2 border-b border-zborder scrollbar-none font-mono text-sm">
-      <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="tab-btn px-4 py-2 rounded-lg border border-transparent hover:bg-white/5 transition flex items-center gap-2 tab-active">
-        <span>📊</span> Dashboard
-      </button>
-      <button onclick="switchTab('gpio')" id="tab-btn-gpio" class="tab-btn px-4 py-2 rounded-lg border border-transparent hover:bg-white/5 transition flex items-center gap-2">
-        <span>🔌</span> 40-Pin GPIO
-      </button>
-      <button onclick="switchTab('camera')" id="tab-btn-camera" class="tab-btn px-4 py-2 rounded-lg border border-transparent hover:bg-white/5 transition flex items-center gap-2">
-        <span>📷</span> Live Camera
-      </button>
-      <button onclick="switchTab('services')" id="tab-btn-services" class="tab-btn px-4 py-2 rounded-lg border border-transparent hover:bg-white/5 transition flex items-center gap-2">
-        <span>🐳</span> Services & Docker
-      </button>
-      <button onclick="switchTab('network')" id="tab-btn-network" class="tab-btn px-4 py-2 rounded-lg border border-transparent hover:bg-white/5 transition flex items-center gap-2">
-        <span>📶</span> Network & WiFi
-      </button>
-      <button onclick="switchTab('hardware')" id="tab-btn-hardware" class="tab-btn px-4 py-2 rounded-lg border border-transparent hover:bg-white/5 transition flex items-center gap-2">
-        <span>🔍</span> I2C & 1-Wire Scanner
-      </button>
-    </nav>
-  </div>
+  <!-- Split View: Left Sidebar + Main Canvas -->
+  <div class="flex-1 flex overflow-hidden">
 
-  <!-- Main Content Area -->
-  <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 flex-1 space-y-6">
+    <!-- Left Navigation Bar -->
+    <aside class="w-64 border-r border-zborder bg-slate-950/60 backdrop-blur-md flex flex-col shrink-0 p-3 justify-between">
+      <div class="space-y-5">
+        <div>
+          <span class="text-[10px] font-mono tracking-wider text-slate-500 uppercase px-3 block mb-2">SYSTEM BEREICHE</span>
+          <nav class="space-y-1 font-mono text-xs">
+            <button onclick="switchTab('dashboard')" id="nav-btn-dashboard" class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-lg border border-transparent hover:bg-white/5 transition text-left nav-active">
+              <div class="flex items-center gap-2.5">
+                <span class="text-zcyan font-bold">[01]</span>
+                <span class="text-slate-200 font-medium">Dashboard</span>
+              </div>
+              <span class="text-[10px] text-slate-500">Live</span>
+            </button>
+            <button onclick="switchTab('gpio')" id="nav-btn-gpio" class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-lg border border-transparent hover:bg-white/5 transition text-left">
+              <div class="flex items-center gap-2.5">
+                <span class="text-slate-400 font-bold">[02]</span>
+                <span class="text-slate-200 font-medium">40-Pin GPIO Matrix</span>
+              </div>
+              <span class="text-[10px] text-slate-500">libgpiod</span>
+            </button>
+            <button onclick="switchTab('camera')" id="nav-btn-camera" class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-lg border border-transparent hover:bg-white/5 transition text-left">
+              <div class="flex items-center gap-2.5">
+                <span class="text-slate-400 font-bold">[03]</span>
+                <span class="text-slate-200 font-medium">Kamera Live-Stream</span>
+              </div>
+              <span class="text-[10px] text-slate-500">CSI/USB</span>
+            </button>
+            <button onclick="switchTab('services')" id="nav-btn-services" class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-lg border border-transparent hover:bg-white/5 transition text-left">
+              <div class="flex items-center gap-2.5">
+                <span class="text-slate-400 font-bold">[04]</span>
+                <span class="text-slate-200 font-medium">Systemd & Container</span>
+              </div>
+              <span class="text-[10px] text-slate-500">Units</span>
+            </button>
+            <button onclick="switchTab('network')" id="nav-btn-network" class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-lg border border-transparent hover:bg-white/5 transition text-left">
+              <div class="flex items-center gap-2.5">
+                <span class="text-slate-400 font-bold">[05]</span>
+                <span class="text-slate-200 font-medium">Netzwerk & WLAN</span>
+              </div>
+              <span class="text-[10px] text-slate-500">Adapter</span>
+            </button>
+            <button onclick="switchTab('hardware')" id="nav-btn-hardware" class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-lg border border-transparent hover:bg-white/5 transition text-left">
+              <div class="flex items-center gap-2.5">
+                <span class="text-slate-400 font-bold">[06]</span>
+                <span class="text-slate-200 font-medium">I2C & 1-Wire Scanner</span>
+              </div>
+              <span class="text-[10px] text-slate-500">Bus 1</span>
+            </button>
+          </nav>
+        </div>
+
+        <div>
+          <span class="text-[10px] font-mono tracking-wider text-slate-500 uppercase px-3 block mb-2">BSI IT-GRUNDSCHUTZ</span>
+          <div class="bg-black/30 p-2.5 rounded-lg border border-white/5 font-mono text-[11px] space-y-1.5">
+            <div class="flex justify-between text-slate-400">
+              <span>Standard:</span>
+              <span class="text-zemerald font-bold">SYS.1.3 / APP.3.1</span>
+            </div>
+            <div class="flex justify-between text-slate-400">
+              <span>Rechtemodell:</span>
+              <span class="text-slate-300">Least-Privilege</span>
+            </div>
+            <div class="flex justify-between text-slate-400">
+              <span>Audit:</span>
+              <span class="text-slate-300">/var/log/zenpi</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="border-t border-white/5 pt-3 font-mono text-[10px] text-slate-500 flex justify-between items-center px-1">
+        <span>Zenkner-Technology</span>
+        <span class="text-slate-400">Autarkes Cockpit</span>
+      </div>
+    </aside>
+
+    <!-- Main Content Canvas -->
+    <main class="flex-1 overflow-y-auto p-6 space-y-6">
 
     <!-- TAB 1: DASHBOARD -->
     <section id="tab-dashboard" class="tab-content space-y-6">
@@ -199,38 +257,34 @@
       </div>
 
       <!-- System Details & Throttling Banner -->
-      <div id="alert-banner" class="hidden glass-card p-4 border-zrose/40 bg-zrose/10 flex items-center justify-between text-sm font-mono text-rose-300">
-        <div class="flex items-center gap-3">
-          <span class="text-xl">⚠️</span>
+      <div id="alert-banner" class="hidden glass-card p-4 border-zrose/40 bg-zrose/10 flex items-center justify-between text-xs font-mono text-rose-300">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-zrose animate-ping"></span>
           <span id="alert-text">Warnung: Unterspannung oder Throttling erkannt!</span>
         </div>
-        <button onclick="dismissAlert()" class="px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-xs">Schließen</button>
+        <button onclick="dismissAlert()" class="px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-[11px]">Ausblenden</button>
       </div>
 
       <!-- Quick Actions Grid -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="glass-card p-5 space-y-4">
-          <h3 class="font-heading font-bold text-base flex items-center gap-2">
-            <span>⚡</span> Systemsteuerung & Power
-          </h3>
+          <h3 class="font-heading font-bold text-base text-white">Systemsteuerung & Autarker Betrieb</h3>
           <p class="text-xs text-slate-400">Fernsteuerung für Reboot, Shutdown oder Notfall-Wartung.</p>
           <div class="flex flex-wrap gap-2 font-mono text-xs">
-            <button onclick="confirmAction('reboot')" class="px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 flex items-center gap-2">
-              🔄 Pi Neustarten
+            <button onclick="confirmAction('reboot')" class="px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200">
+              Pi Neustarten
             </button>
-            <button onclick="confirmAction('shutdown')" class="px-3 py-2 rounded-lg bg-zrose/10 hover:bg-zrose/20 border border-zrose/30 text-rose-300 flex items-center gap-2">
-              🛑 Sicher Herunterfahren
+            <button onclick="confirmAction('shutdown')" class="px-3 py-2 rounded-lg bg-zrose/10 hover:bg-zrose/20 border border-zrose/30 text-rose-300">
+              Sicher Herunterfahren
             </button>
-            <button onclick="triggerSdBackup()" class="px-3 py-2 rounded-lg bg-zcyan/10 hover:bg-zcyan/20 border border-zcyan/30 text-zcyan flex items-center gap-2">
-              💾 SD-Card Image Backup
+            <button onclick="triggerSdBackup()" class="px-3 py-2 rounded-lg bg-zcyan/10 hover:bg-zcyan/20 border border-zcyan/30 text-zcyan">
+              SD-Card Image Backup
             </button>
           </div>
         </div>
 
         <div class="glass-card p-5 space-y-4">
-          <h3 class="font-heading font-bold text-base flex items-center gap-2">
-            <span>⚙️</span> Pi Hardware & Plattform-Info
-          </h3>
+          <h3 class="font-heading font-bold text-base text-white">Pi Hardware & Plattform-Info</h3>
           <div class="grid grid-cols-2 gap-2 text-xs font-mono">
             <div class="p-2 rounded bg-black/30 border border-white/5">
               <span class="text-slate-500 block">HOSTNAME</span>
@@ -258,8 +312,8 @@
       <div class="glass-card p-5 space-y-4">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zborder pb-4">
           <div>
-            <h2 class="font-heading font-bold text-lg flex items-center gap-2">
-              <span>🔌</span> Interaktiver 40-Pin GPIO Header
+            <h2 class="font-heading font-bold text-lg text-white">
+              Interaktiver 40-Pin GPIO Header
             </h2>
             <p class="text-xs text-slate-400">Live-Pegelanzeige und Klick-to-Toggle Steuerung für Relais, Sensoren und Aktoren.</p>
           </div>
@@ -281,13 +335,13 @@
       <div class="glass-card p-5 space-y-4">
         <div class="flex items-center justify-between border-b border-zborder pb-4">
           <div>
-            <h2 class="font-heading font-bold text-lg flex items-center gap-2">
-              <span>📷</span> Raspberry Pi Kamera Live-Stream
+            <h2 class="font-heading font-bold text-lg text-white">
+              Raspberry Pi Kamera Live-Stream
             </h2>
             <p class="text-xs text-slate-400">Direkter MJPEG-Stream via libcamera / V4L2 mit automatischer Bildaktualisierung.</p>
           </div>
-          <button onclick="takeSnapshot()" class="px-3 py-1.5 rounded-lg bg-zcyan/10 hover:bg-zcyan/20 border border-zcyan/30 text-zcyan font-mono text-xs flex items-center gap-1.5">
-            📸 Snapshot speichern
+          <button onclick="takeSnapshot()" class="px-3 py-1.5 rounded-lg bg-zcyan/10 hover:bg-zcyan/20 border border-zcyan/30 text-zcyan font-mono text-xs">
+            Snapshot speichern
           </button>
         </div>
 
@@ -306,8 +360,8 @@
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- System Services -->
         <div class="glass-card p-5 space-y-4">
-          <h2 class="font-heading font-bold text-lg flex items-center gap-2">
-            <span>⚙️</span> Systemd Dienste
+          <h2 class="font-heading font-bold text-lg text-white">
+            Systemd Dienste
           </h2>
           <div id="services-list" class="space-y-2">
             <!-- Services gerendert per JS -->
@@ -316,8 +370,8 @@
 
         <!-- Docker Containers -->
         <div class="glass-card p-5 space-y-4">
-          <h2 class="font-heading font-bold text-lg flex items-center gap-2">
-            <span>🐳</span> Docker Container
+          <h2 class="font-heading font-bold text-lg text-white">
+            Docker Container
           </h2>
           <div id="docker-list" class="space-y-2">
             <!-- Docker gerendert per JS -->
@@ -331,8 +385,8 @@
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Interfaces -->
         <div class="glass-card p-5 space-y-4">
-          <h2 class="font-heading font-bold text-lg flex items-center gap-2">
-            <span>🌐</span> Netzwerkschnittstellen
+          <h2 class="font-heading font-bold text-lg text-white">
+            Netzwerkschnittstellen
           </h2>
           <div id="interfaces-list" class="space-y-2">
             <!-- Interfaces per JS -->
@@ -342,8 +396,8 @@
         <!-- WiFi Scanner -->
         <div class="glass-card p-5 space-y-4">
           <div class="flex justify-between items-center">
-            <h2 class="font-heading font-bold text-lg flex items-center gap-2">
-              <span>📶</span> WLAN Scanner
+            <h2 class="font-heading font-bold text-lg text-white">
+              WLAN Scanner
             </h2>
             <button onclick="scanWifi()" class="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 text-xs font-mono border border-white/10">Neu Scannen</button>
           </div>
@@ -360,8 +414,8 @@
         <!-- I2C Scanner -->
         <div class="glass-card p-5 space-y-4">
           <div class="flex justify-between items-center">
-            <h2 class="font-heading font-bold text-lg flex items-center gap-2">
-              <span>⚡</span> I2C Bus Scanner (Bus 1)
+            <h2 class="font-heading font-bold text-lg text-white">
+              I2C Bus Scanner (Bus 1)
             </h2>
             <button onclick="scanI2C()" class="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 text-xs font-mono border border-white/10">Scan ausführen</button>
           </div>
@@ -373,8 +427,8 @@
         <!-- 1-Wire Sensors -->
         <div class="glass-card p-5 space-y-4">
           <div class="flex justify-between items-center">
-            <h2 class="font-heading font-bold text-lg flex items-center gap-2">
-              <span>🌡️</span> 1-Wire Temperatursensoren (DS18B20)
+            <h2 class="font-heading font-bold text-lg text-white">
+              1-Wire Temperatursensoren (DS18B20)
             </h2>
             <button onclick="scanOneWire()" class="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 text-xs font-mono border border-white/10">Aktualisieren</button>
           </div>
@@ -385,12 +439,8 @@
       </div>
     </section>
 
-  </main>
-
-  <!-- Footer -->
-  <footer class="border-t border-zborder py-4 px-6 text-center text-xs font-mono text-slate-500 glass-card !rounded-none">
-    <span>ZenPi Cockpit &bull; Entwickelt von <a href="https://zenkner-technology.de" target="_blank" class="text-zcyan hover:underline">Zenkner-Technology</a> &bull; Open Source für Maker & IoT</span>
-  </footer>
+    </main>
+  </div>
 
   <!-- Script Core -->
   <script>
@@ -399,12 +449,12 @@
     function switchTab(tabId) {
       activeTab = tabId;
       document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('tab-active'));
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('nav-active'));
       
       const target = document.getElementById('tab-' + tabId);
-      const btn = document.getElementById('tab-btn-' + tabId);
+      const btn = document.getElementById('nav-btn-' + tabId);
       if (target) target.classList.remove('hidden');
-      if (btn) btn.classList.add('tab-active');
+      if (btn) btn.classList.add('nav-active');
 
       if (tabId === 'gpio') loadGpioPins();
       if (tabId === 'services') { loadServices(); loadDocker(); }
@@ -891,8 +941,106 @@
       window.open('/api/camera/snapshot', '_blank');
     }
 
-    // Start WebSocket
+    async function checkAuthStatus() {
+      if (isFileOrigin) return;
+      try {
+        const res = await fetch(`${apiBase}/api/auth/status`);
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        const modal = document.getElementById('auth-modal');
+        const title = document.getElementById('auth-modal-title');
+        const sub = document.getElementById('auth-modal-sub');
+        const submitBtn = document.getElementById('auth-submit-btn');
+        
+        if (data.initial_setup_required) {
+          modal.classList.remove('hidden');
+          title.innerText = 'Initiales Kennwort festlegen';
+          sub.innerText = 'BSI SYS.1.3: Bitte lege dein sicheres Administrator-Kennwort fest.';
+          submitBtn.innerText = 'Kennwort speichern';
+        } else if (!data.is_authenticated && data.auth_enabled) {
+          modal.classList.remove('hidden');
+          title.innerText = 'ZenPi Authentifizierung';
+          sub.innerText = 'BSI APP.3.1 Autorisierungspruefung';
+          submitBtn.innerText = 'Anmelden';
+        } else {
+          modal.classList.add('hidden');
+        }
+      } catch (e) {}
+    }
+
+    async function handleAuthSubmit(event) {
+      event.preventDefault();
+      const password = document.getElementById('auth-password').value;
+      const errorEl = document.getElementById('auth-error-msg');
+      errorEl.classList.add('hidden');
+
+      try {
+        const statusRes = await fetch(`${apiBase}/api/auth/status`);
+        const statusData = await statusRes.json();
+
+        let endpoint = `${apiBase}/api/auth/login`;
+        let payload = { password };
+        if (statusData.initial_setup_required) {
+          endpoint = `${apiBase}/api/auth/setup`;
+          payload = { new_password: password };
+        }
+
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          errorEl.innerText = err.detail || 'Authentifizierung fehlgeschlagen';
+          errorEl.classList.remove('hidden');
+          return;
+        }
+
+        document.getElementById('auth-modal').classList.add('hidden');
+        location.reload();
+      } catch (e) {
+        errorEl.innerText = 'Kommunikationsfehler mit ZenPi Backend';
+        errorEl.classList.remove('hidden');
+      }
+    }
+
+    async function handleLogout() {
+      try {
+        await fetch(`${apiBase}/api/auth/logout`, { method: 'POST' });
+        location.reload();
+      } catch (e) {
+        location.reload();
+      }
+    }
+
+    checkAuthStatus();
     connectWebSocket();
   </script>
+
+  <!-- BSI Auth Modal -->
+  <div id="auth-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-zcard border border-zborder rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center gap-3 border-b border-white/5 pb-3">
+        <img src="./public/logo.png" onerror="this.src='./logo.png'" alt="ZenPi" class="w-8 h-8 object-contain">
+        <div>
+          <h3 id="auth-modal-title" class="font-heading font-bold text-base text-white">ZenPi Authentifizierung</h3>
+          <p id="auth-modal-sub" class="text-[11px] text-slate-400 font-mono">BSI APP.3.1 Autorisierungsprüfung</p>
+        </div>
+      </div>
+      <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="space-y-3 font-mono text-xs">
+        <div>
+          <label class="block text-slate-400 mb-1">Administrator-Kennwort</label>
+          <input type="password" id="auth-password" required class="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-zcyan" placeholder="Kennwort eingeben">
+        </div>
+        <p id="auth-error-msg" class="text-zrose hidden text-[11px]"></p>
+        <button type="submit" id="auth-submit-btn" class="w-full py-2 rounded-lg bg-zcyan text-slate-900 font-bold hover:bg-sky-400 transition">
+          Anmelden
+        </button>
+      </form>
+    </div>
+  </div>
 </body>
 </html>
