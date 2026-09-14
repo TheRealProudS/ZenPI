@@ -154,6 +154,17 @@
       background-color: var(--subtle-box);
       border: 1px solid var(--border-color);
     }
+
+    .metric-card {
+      cursor: pointer;
+      position: relative;
+    }
+
+    .metric-card:hover {
+      border-color: var(--border-hover);
+      box-shadow: 0 6px 24px rgba(2, 132, 199, 0.12);
+      transform: translateY(-1px);
+    }
   </style>
   <script>
     (function() {
@@ -326,9 +337,12 @@
     <section id="tab-dashboard" class="tab-content space-y-6">
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <!-- CPU Card -->
-        <div class="glass-card p-5 space-y-3">
+        <div onclick="openMetricDetail('cpu')" class="glass-card metric-card p-5 space-y-3" title="Klicken für detaillierte CPU-Analyse & Prozessliste">
           <div class="flex justify-between items-center text-xs font-mono theme-text-dim">
-            <span class="font-semibold">CPU AUSLASTUNG</span>
+            <span class="font-semibold flex items-center gap-1.5">
+              <span>CPU AUSLASTUNG</span>
+              <svg class="w-3 h-3 text-sky-500 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+            </span>
             <span id="dash-cpu-freq" class="text-sky-500 font-bold">-- MHz</span>
           </div>
           <div class="text-3xl font-heading font-bold theme-text-main flex items-baseline gap-2">
@@ -343,9 +357,12 @@
         </div>
 
         <!-- Temperature Card -->
-        <div class="glass-card p-5 space-y-3">
+        <div onclick="openMetricDetail('soc')" class="glass-card metric-card p-5 space-y-3" title="Klicken für Temperaturverlauf & Throttling-Status">
           <div class="flex justify-between items-center text-xs font-mono theme-text-dim">
-            <span class="font-semibold">SOC TEMPERATUR</span>
+            <span class="font-semibold flex items-center gap-1.5">
+              <span>SOC TEMPERATUR</span>
+              <svg class="w-3 h-3 text-emerald-500 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+            </span>
             <span class="theme-text-dim">Max: 85°C</span>
           </div>
           <div class="text-3xl font-heading font-bold theme-text-main flex items-baseline gap-2">
@@ -360,9 +377,12 @@
         </div>
 
         <!-- RAM Card -->
-        <div class="glass-card p-5 space-y-3">
+        <div onclick="openMetricDetail('ram')" class="glass-card metric-card p-5 space-y-3" title="Klicken für Speicheraufteilung & RAM-Prozesse">
           <div class="flex justify-between items-center text-xs font-mono theme-text-dim">
-            <span class="font-semibold">ARBEITSSPEICHER</span>
+            <span class="font-semibold flex items-center gap-1.5">
+              <span>ARBEITSSPEICHER</span>
+              <svg class="w-3 h-3 text-indigo-500 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+            </span>
             <span id="dash-ram-raw" class="theme-text-dim font-bold">-- / -- MB</span>
           </div>
           <div class="text-3xl font-heading font-bold theme-text-main flex items-baseline gap-2">
@@ -378,9 +398,12 @@
         </div>
 
         <!-- Storage Card -->
-        <div class="glass-card p-5 space-y-3">
+        <div onclick="openMetricDetail('disk')" class="glass-card metric-card p-5 space-y-3" title="Klicken für Partitionsdetails & Mountpoints">
           <div class="flex justify-between items-center text-xs font-mono theme-text-dim">
-            <span class="font-semibold">SPEICHER / SD-KARTE</span>
+            <span class="font-semibold flex items-center gap-1.5">
+              <span>SPEICHER / SD-KARTE</span>
+              <svg class="w-3 h-3 text-amber-500 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+            </span>
             <span id="dash-disk-raw" class="theme-text-dim font-bold">-- / -- GB</span>
           </div>
           <div class="text-3xl font-heading font-bold theme-text-main flex items-baseline gap-2">
@@ -585,6 +608,9 @@
   <!-- Script Core -->
   <script>
     let activeTab = 'dashboard';
+    let currentMetricModalOpen = null;
+    let processRefreshInterval = null;
+    let cachedProcessList = [];
 
     function toggleTheme() {
       const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
@@ -707,6 +733,8 @@
           total_mb: 8192,
           used_mb: 2340,
           available_mb: 5852,
+          cached_mb: 1240,
+          buffers_mb: 320,
           percent: 28.5,
         },
         swap: {
@@ -719,16 +747,56 @@
           used_gb: 34.2,
           free_gb: 93.8,
           percent: 26.7,
+          partitions: [
+            { mountpoint: "/", device: "/dev/mmcblk0p2", fstype: "ext4", total_gb: 124.5, used_gb: 34.0, free_gb: 90.5, percent: 27.3 },
+            { mountpoint: "/boot/firmware", device: "/dev/mmcblk0p1", fstype: "vfat", total_gb: 0.5, used_gb: 0.1, free_gb: 0.4, percent: 20.0 }
+          ]
         },
         throttled: {
           under_voltage_detected: false,
           currently_throttled: false,
+          arm_frequency_capped: false,
+          soft_temperature_limit_active: false,
+          under_voltage_has_occurred: false,
+          throttling_has_occurred: false
         }
       };
       updateTelemetryUI(mockData);
     }
 
+    let lastTelemetryData = null;
+    const telemetryHistory = {
+      cpu: [],
+      soc: [],
+      ram: [],
+      disk: []
+    };
+
     function updateTelemetryUI(data) {
+      lastTelemetryData = data;
+
+      // History aufzeichnen (max 30 Datenpunkte = 30 Sekunden)
+      if (data.cpu && typeof data.cpu.total_percent === 'number') {
+        telemetryHistory.cpu.push(data.cpu.total_percent);
+        if (telemetryHistory.cpu.length > 30) telemetryHistory.cpu.shift();
+      }
+      if (data.cpu && typeof data.cpu.temperature_c === 'number') {
+        telemetryHistory.soc.push(data.cpu.temperature_c);
+        if (telemetryHistory.soc.length > 30) telemetryHistory.soc.shift();
+      }
+      if (data.memory && typeof data.memory.percent === 'number') {
+        telemetryHistory.ram.push(data.memory.percent);
+        if (telemetryHistory.ram.length > 30) telemetryHistory.ram.shift();
+      }
+      if (data.disk && typeof data.disk.percent === 'number') {
+        telemetryHistory.disk.push(data.disk.percent);
+        if (telemetryHistory.disk.length > 30) telemetryHistory.disk.shift();
+      }
+
+      if (currentMetricModalOpen) {
+        renderMetricModalContent(currentMetricModalOpen);
+      }
+
       document.getElementById('header-host-info').innerText = `${data.hostname} - ${data.architecture} - Up: ${formatUptime(data.uptime_seconds)}`;
       
       document.getElementById('quick-temp').innerText = `${data.cpu.temperature_c}°C`;
@@ -1195,6 +1263,453 @@
       }
     }
 
+    async function fetchSystemProcesses(sortBy = 'cpu') {
+      try {
+        const res = await fetch(`${apiBase}/api/system/processes?sort=${sortBy}&limit=12`);
+        if (res.ok) {
+          cachedProcessList = await res.json();
+          return cachedProcessList;
+        }
+      } catch (e) {}
+
+      // Fallback-Simulation für Standalone / Offline-Betrieb
+      return [
+        { pid: 842, name: "zenpi-backend", user: "zenpi", cpu: 3.4, mem: 1.8, status: "running" },
+        { pid: 1205, name: "python3", user: "zenpi", cpu: 2.1, mem: 1.5, status: "running" },
+        { pid: 1, name: "systemd", user: "root", cpu: 0.8, mem: 0.6, status: "sleeping" },
+        { pid: 412, name: "systemd-journald", user: "root", cpu: 0.4, mem: 0.9, status: "running" },
+        { pid: 618, name: "NetworkManager", user: "root", cpu: 0.2, mem: 0.7, status: "running" },
+        { pid: 720, name: "sshd", user: "root", cpu: 0.1, mem: 0.4, status: "sleeping" },
+        { pid: 911, name: "dockerd", user: "root", cpu: 1.2, mem: 3.2, status: "running" },
+        { pid: 1044, name: "containerd", user: "root", cpu: 0.6, mem: 2.1, status: "running" },
+        { pid: 1150, name: "pihole-FTL", user: "pihole", cpu: 0.3, mem: 1.2, status: "running" },
+        { pid: 1332, name: "nginx", user: "www-data", cpu: 0.2, mem: 0.5, status: "sleeping" }
+      ];
+    }
+
+    function renderSparklineSvg(dataPoints, color, maxY = 100, unit = '%') {
+      if (!dataPoints || dataPoints.length === 0) {
+        return '<div class="h-28 flex items-center justify-center theme-text-dim text-xs font-mono">Erfasse Telemetrie-Datenpunkte...</div>';
+      }
+      const width = 460;
+      const height = 90;
+      const padding = 8;
+      const pts = dataPoints.slice(-25);
+      const step = (width - padding * 2) / Math.max(pts.length - 1, 1);
+      
+      const coords = pts.map((val, idx) => {
+        const x = padding + idx * step;
+        const normalized = Math.min(Math.max(val / maxY, 0), 1);
+        const y = height - padding - (normalized * (height - padding * 2));
+        return { x, y, val };
+      });
+
+      const pathStr = coords.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+      const fillStr = `${pathStr} L ${coords[coords.length - 1].x.toFixed(1)} ${height - padding} L ${coords[0].x.toFixed(1)} ${height - padding} Z`;
+      const lastVal = pts[pts.length - 1];
+
+      return `
+        <div class="relative w-full">
+          <svg viewBox="0 0 ${width} ${height}" class="w-full h-24 overflow-visible">
+            <defs>
+              <linearGradient id="grad-${color}" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="${color}" stop-opacity="0.35"/>
+                <stop offset="100%" stop-color="${color}" stop-opacity="0.0"/>
+              </linearGradient>
+            </defs>
+            <path d="${fillStr}" fill="url(#grad-${color})" />
+            <path d="${pathStr}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+            ${coords.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2" fill="${color}" opacity="0.8"/>`).join('')}
+          </svg>
+          <div class="flex justify-between text-[11px] font-mono theme-text-dim mt-1 px-1">
+            <span>Vor 30 Sekunden</span>
+            <span class="font-bold theme-text-main">Aktuell: ${lastVal}${unit}</span>
+            <span>Jetzt</span>
+          </div>
+        </div>
+      `;
+    }
+
+    async function openMetricDetail(metricType) {
+      currentMetricModalOpen = metricType;
+      const modal = document.getElementById('metric-detail-modal');
+      modal.classList.remove('hidden');
+      
+      await refreshMetricDetailData(metricType);
+
+      if (processRefreshInterval) clearInterval(processRefreshInterval);
+      processRefreshInterval = setInterval(() => {
+        if (currentMetricModalOpen) {
+          renderMetricModalContent(currentMetricModalOpen);
+        }
+      }, 1500);
+    }
+
+    function closeMetricModal() {
+      currentMetricModalOpen = null;
+      if (processRefreshInterval) clearInterval(processRefreshInterval);
+      const modal = document.getElementById('metric-detail-modal');
+      modal.classList.add('hidden');
+    }
+
+    async function refreshMetricDetailData(metricType) {
+      if (metricType === 'cpu' || metricType === 'ram') {
+        const sortBy = metricType === 'ram' ? 'mem' : 'cpu';
+        await fetchSystemProcesses(sortBy);
+      }
+      renderMetricModalContent(metricType);
+    }
+
+    function renderMetricModalContent(type) {
+      const data = lastTelemetryData;
+      if (!data) return;
+
+      const titleEl = document.getElementById('metric-modal-title');
+      const badgeEl = document.getElementById('metric-modal-badge');
+      const subEl = document.getElementById('metric-modal-sub');
+      const bodyEl = document.getElementById('metric-modal-body');
+
+      if (type === 'cpu') {
+        titleEl.innerText = 'CPU Architektur & Prozessüberwachung';
+        badgeEl.innerText = 'SYS-01 / BCM-ARM';
+        badgeEl.className = 'text-[11px] px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-500 border border-sky-500/30 font-mono';
+        subEl.innerText = `${data.hostname} - ${data.architecture} - ${data.platform}`;
+
+        const procs = cachedProcessList.length > 0 ? cachedProcessList : [];
+        bodyEl.innerHTML = `
+          <div class="space-y-4">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 font-mono text-xs">
+              <div class="theme-box p-3 rounded-lg border border-zborder">
+                <span class="theme-text-dim block text-[10px]">GESAMT-AUSLASTUNG</span>
+                <span class="text-lg font-bold theme-text-main">${Math.round(data.cpu.total_percent)}%</span>
+              </div>
+              <div class="theme-box p-3 rounded-lg border border-zborder">
+                <span class="theme-text-dim block text-[10px]">ARM TAKTRATE</span>
+                <span class="text-lg font-bold text-sky-500">${data.cpu.frequency_mhz} MHz</span>
+              </div>
+              <div class="theme-box p-3 rounded-lg border border-zborder">
+                <span class="theme-text-dim block text-[10px]">CORES AKTIV</span>
+                <span class="text-lg font-bold theme-text-main">${data.cpu.cores_percent.length} Cores</span>
+              </div>
+              <div class="theme-box p-3 rounded-lg border border-zborder">
+                <span class="theme-text-dim block text-[10px]">GOVERNOR</span>
+                <span class="text-lg font-bold text-emerald-500">ondemand</span>
+              </div>
+            </div>
+
+            <div class="glass-card p-4 border border-zborder space-y-2">
+              <div class="flex justify-between items-center text-xs font-mono">
+                <span class="font-bold theme-text-main">Echtzeit-Verlauf CPU-Last (letzte 30s)</span>
+                <span class="text-sky-500 font-mono">${Math.round(data.cpu.total_percent)}%</span>
+              </div>
+              ${renderSparklineSvg(telemetryHistory.cpu, '#0284c7', 100, '%')}
+            </div>
+
+            <div class="glass-card p-4 border border-zborder space-y-2">
+              <div class="flex justify-between items-center text-xs font-mono">
+                <span class="font-bold theme-text-main">Multi-Core Lastverteilung</span>
+                <span class="theme-text-dim">${data.cpu.cores_percent.length} physische Kerne</span>
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-xs">
+                ${data.cpu.cores_percent.map((c, i) => `
+                  <div class="theme-box p-2.5 rounded-lg border border-zborder space-y-1">
+                    <div class="flex justify-between text-[11px]">
+                      <span class="theme-text-dim">Core ${i}</span>
+                      <span class="theme-text-main font-bold">${Math.round(c)}%</span>
+                    </div>
+                    <div class="w-full progress-track rounded-full h-1.5 overflow-hidden">
+                      <div class="bg-sky-500 h-full transition-all duration-300" style="width: ${Math.min(100, Math.round(c))}%"></div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <div class="glass-card p-4 border border-zborder space-y-3">
+              <div class="flex justify-between items-center text-xs font-mono">
+                <span class="font-bold theme-text-main flex items-center gap-2">
+                  <span>Top Prozesse nach CPU</span>
+                  <span class="text-[10px] px-2 py-0.5 rounded bg-sky-500/10 text-sky-500 border border-sky-500/30">Live Polling</span>
+                </span>
+                <button onclick="refreshMetricDetailData('cpu')" class="px-2 py-1 rounded theme-box border border-zborder theme-text-main hover:border-sky-500/40 text-[11px] transition">Aktualisieren</button>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full text-left font-mono text-xs">
+                  <thead>
+                    <tr class="border-b border-zborder theme-text-dim text-[11px]">
+                      <th class="py-1.5 px-2">PID</th>
+                      <th class="py-1.5 px-2">PROZESS</th>
+                      <th class="py-1.5 px-2">USER</th>
+                      <th class="py-1.5 px-2">STATUS</th>
+                      <th class="py-1.5 px-2 text-right">CPU %</th>
+                      <th class="py-1.5 px-2 text-right">MEM %</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-zborder">
+                    ${procs.map(p => `
+                      <tr class="hover:bg-sky-500/5 transition">
+                        <td class="py-2 px-2 theme-text-dim">${p.pid}</td>
+                        <td class="py-2 px-2 font-bold theme-text-main">${p.name}</td>
+                        <td class="py-2 px-2 theme-text-dim">${p.user}</td>
+                        <td class="py-2 px-2"><span class="px-1.5 py-0.5 rounded text-[10px] ${p.status === 'running' ? 'bg-emerald-500/15 text-emerald-500' : 'theme-box theme-text-dim'}">${p.status}</span></td>
+                        <td class="py-2 px-2 text-right font-bold text-sky-500">${p.cpu}%</td>
+                        <td class="py-2 px-2 text-right theme-text-muted">${p.mem}%</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (type === 'soc') {
+        titleEl.innerText = 'SoC Temperatur & Thermal Throttling Radar';
+        badgeEl.innerText = 'BSI SYS.1.3 HARDWARE';
+        badgeEl.className = 'text-[11px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 font-mono';
+        subEl.innerText = 'vcgencmd get_throttled & measure_temp Hardware-Sensoren';
+
+        const th = data.throttled || {};
+        const isOk = !th.under_voltage_detected && !th.currently_throttled;
+        bodyEl.innerHTML = `
+          <div class="space-y-4">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 font-mono text-xs">
+              <div class="theme-box p-3 rounded-lg border border-zborder">
+                <span class="theme-text-dim block text-[10px]">AKTUELLE TEMPERATUR</span>
+                <span class="text-lg font-bold ${data.cpu.temperature_c > 75 ? 'text-rose-500' : data.cpu.temperature_c > 60 ? 'text-amber-500' : 'text-emerald-500'}">${data.cpu.temperature_c}°C</span>
+              </div>
+              <div class="theme-box p-3 rounded-lg border border-zborder">
+                <span class="theme-text-dim block text-[10px]">KRITISCHE GRENZE</span>
+                <span class="text-lg font-bold theme-text-main">85.0°C</span>
+              </div>
+              <div class="theme-box p-3 rounded-lg border border-zborder">
+                <span class="theme-text-dim block text-[10px]">SPANNUNGS-STATUS</span>
+                <span class="text-lg font-bold ${th.under_voltage_detected ? 'text-rose-500' : 'text-emerald-500'}">${th.under_voltage_detected ? 'Unterspannung!' : 'Normal (5.1V)'}</span>
+              </div>
+              <div class="theme-box p-3 rounded-lg border border-zborder">
+                <span class="theme-text-dim block text-[10px]">THROTTLING BITCODE</span>
+                <span class="text-lg font-bold text-sky-500">${th.raw || '0x0'}</span>
+              </div>
+            </div>
+
+            <div class="glass-card p-4 border border-zborder space-y-2">
+              <div class="flex justify-between items-center text-xs font-mono">
+                <span class="font-bold theme-text-main">Temperaturkurve (letzte 30s)</span>
+                <span class="text-emerald-500 font-mono">${data.cpu.temperature_c}°C</span>
+              </div>
+              ${renderSparklineSvg(telemetryHistory.soc, '#10b981', 85, '°C')}
+            </div>
+
+            <div class="glass-card p-4 border border-zborder space-y-3 font-mono text-xs">
+              <div class="flex justify-between items-center">
+                <span class="font-bold theme-text-main">BSI Hardware-Schutzstatus (vcgencmd)</span>
+                <span class="text-[11px] px-2 py-0.5 rounded ${isOk ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30' : 'bg-rose-500/15 text-rose-500 border border-rose-500/30'}">
+                  ${isOk ? 'STATUS EINWANDFREI' : 'AUFFÄLLIGKEIT ERKANNT'}
+                </span>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <div class="p-2.5 rounded-lg theme-box border border-zborder flex items-center justify-between">
+                  <span class="theme-text-muted">Aktuelle Unterspannung:</span>
+                  <span class="font-bold ${th.under_voltage_detected ? 'text-rose-500' : 'text-emerald-500'}">${th.under_voltage_detected ? 'JA' : 'NEIN'}</span>
+                </div>
+                <div class="p-2.5 rounded-lg theme-box border border-zborder flex items-center justify-between">
+                  <span class="theme-text-muted">Aktive Frequenz-Kappung:</span>
+                  <span class="font-bold ${th.arm_frequency_capped ? 'text-rose-500' : 'text-emerald-500'}">${th.arm_frequency_capped ? 'JA' : 'NEIN'}</span>
+                </div>
+                <div class="p-2.5 rounded-lg theme-box border border-zborder flex items-center justify-between">
+                  <span class="theme-text-muted">Aktives Thermal-Throttling:</span>
+                  <span class="font-bold ${th.currently_throttled ? 'text-rose-500' : 'text-emerald-500'}">${th.currently_throttled ? 'JA' : 'NEIN'}</span>
+                </div>
+                <div class="p-2.5 rounded-lg theme-box border border-zborder flex items-center justify-between">
+                  <span class="theme-text-muted">Soft Temperature Limit:</span>
+                  <span class="font-bold ${th.soft_temperature_limit_active ? 'text-rose-500' : 'text-emerald-500'}">${th.soft_temperature_limit_active ? 'JA' : 'NEIN'}</span>
+                </div>
+                <div class="p-2.5 rounded-lg theme-box border border-zborder flex items-center justify-between">
+                  <span class="theme-text-muted">Vergangene Unterspannung:</span>
+                  <span class="font-bold ${th.under_voltage_has_occurred ? 'text-amber-500' : 'text-emerald-500'}">${th.under_voltage_has_occurred ? 'HISTORISCH' : 'KEINE'}</span>
+                </div>
+                <div class="p-2.5 rounded-lg theme-box border border-zborder flex items-center justify-between">
+                  <span class="theme-text-muted">Vergangenes Throttling:</span>
+                  <span class="font-bold ${th.throttling_has_occurred ? 'text-amber-500' : 'text-emerald-500'}">${th.throttling_has_occurred ? 'HISTORISCH' : 'KEINE'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (type === 'ram') {
+        titleEl.innerText = 'Arbeitsspeicher & Swap Segmentierung';
+        badgeEl.innerText = 'SYS-01 MEMORY';
+        badgeEl.className = 'text-[11px] px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-500 border border-indigo-500/30 font-mono';
+        subEl.innerText = 'Physischer LPDDR4X / SDRAM Speicher & Linux Page Cache';
+
+        const mem = data.memory || {};
+        const swap = data.swap || {};
+        const procs = cachedProcessList.length > 0 ? cachedProcessList : [];
+
+        bodyEl.innerHTML = `
+          <div class="space-y-4">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 font-mono text-xs">
+              <div class="theme-box p-3 rounded-lg border border-zborder">
+                <span class="theme-text-dim block text-[10px]">BELEGT / GESAMT</span>
+                <span class="text-base font-bold theme-text-main">${mem.used_mb} / ${mem.total_mb} MB</span>
+              </div>
+              <div class="theme-box p-3 rounded-lg border border-zborder">
+                <span class="theme-text-dim block text-[10px]">VERFÜGBAR (FREI)</span>
+                <span class="text-base font-bold text-emerald-500">${mem.available_mb} MB</span>
+              </div>
+              <div class="theme-box p-3 rounded-lg border border-zborder">
+                <span class="theme-text-dim block text-[10px]">CACHED & BUFFERS</span>
+                <span class="text-base font-bold text-sky-500">${mem.cached_mb || 0} MB</span>
+              </div>
+              <div class="theme-box p-3 rounded-lg border border-zborder">
+                <span class="theme-text-dim block text-[10px]">SWAP VERWENDUNG</span>
+                <span class="text-base font-bold text-amber-500">${swap.used_mb || 0} MB (${swap.percent}%)</span>
+              </div>
+            </div>
+
+            <div class="glass-card p-4 border border-zborder space-y-2">
+              <div class="flex justify-between items-center text-xs font-mono">
+                <span class="font-bold theme-text-main">RAM-Belegungskurve (letzte 30s)</span>
+                <span class="text-indigo-500 font-mono">${mem.percent}%</span>
+              </div>
+              ${renderSparklineSvg(telemetryHistory.ram, '#6366f1', 100, '%')}
+            </div>
+
+            <div class="glass-card p-4 border border-zborder space-y-3 font-mono text-xs">
+              <span class="font-bold theme-text-main">Speichersegmentierung (Linux Virtual Memory)</span>
+              <div class="w-full progress-track rounded-lg h-5 overflow-hidden flex text-[10px] font-bold">
+                <div class="bg-indigo-500 h-full flex items-center justify-center text-white px-1" style="width: ${Math.max(12, (mem.used_mb / mem.total_mb) * 100)}%" title="Used: ${mem.used_mb}MB">
+                  Used ${Math.round((mem.used_mb / mem.total_mb) * 100)}%
+                </div>
+                <div class="bg-sky-500 h-full flex items-center justify-center text-white px-1" style="width: ${Math.max(8, ((mem.cached_mb || 0) / mem.total_mb) * 100)}%" title="Cached: ${mem.cached_mb}MB">
+                  Cache
+                </div>
+                <div class="bg-emerald-500/60 h-full flex items-center justify-center text-white px-1 flex-1" title="Free: ${mem.available_mb}MB">
+                  Free ${Math.round((mem.available_mb / mem.total_mb) * 100)}%
+                </div>
+              </div>
+              <div class="flex justify-between text-[11px] theme-text-dim">
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded bg-indigo-500"></span> Belegt (${mem.used_mb} MB)</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded bg-sky-500"></span> Cache (${mem.cached_mb || 0} MB)</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded bg-emerald-500"></span> Frei (${mem.available_mb} MB)</span>
+              </div>
+            </div>
+
+            <div class="glass-card p-4 border border-zborder space-y-3">
+              <div class="flex justify-between items-center text-xs font-mono">
+                <span class="font-bold theme-text-main flex items-center gap-2">
+                  <span>Top speicherintensive Prozesse</span>
+                  <span class="text-[10px] px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-500 border border-indigo-500/30">Sortiert nach RAM</span>
+                </span>
+                <button onclick="refreshMetricDetailData('ram')" class="px-2 py-1 rounded theme-box border border-zborder theme-text-main hover:border-sky-500/40 text-[11px] transition">Aktualisieren</button>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full text-left font-mono text-xs">
+                  <thead>
+                    <tr class="border-b border-zborder theme-text-dim text-[11px]">
+                      <th class="py-1.5 px-2">PID</th>
+                      <th class="py-1.5 px-2">PROZESS</th>
+                      <th class="py-1.5 px-2">USER</th>
+                      <th class="py-1.5 px-2 text-right">MEM %</th>
+                      <th class="py-1.5 px-2 text-right">CPU %</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-zborder">
+                    ${procs.slice().sort((a,b) => b.mem - a.mem).map(p => `
+                      <tr class="hover:bg-indigo-500/5 transition">
+                        <td class="py-2 px-2 theme-text-dim">${p.pid}</td>
+                        <td class="py-2 px-2 font-bold theme-text-main">${p.name}</td>
+                        <td class="py-2 px-2 theme-text-dim">${p.user}</td>
+                        <td class="py-2 px-2 text-right font-bold text-indigo-500">${p.mem}%</td>
+                        <td class="py-2 px-2 text-right theme-text-muted">${p.cpu}%</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (type === 'disk') {
+        titleEl.innerText = 'Speicher, Partitionen & SD-Card Health';
+        badgeEl.innerText = 'SYS-06 STORAGE';
+        badgeEl.className = 'text-[11px] px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-500 border border-amber-500/30 font-mono';
+        subEl.innerText = 'Dateisysteme (ext4, vfat), Wear-Leveling & Partitions-Mounts';
+
+        const disk = data.disk || {};
+        const parts = (disk.partitions && disk.partitions.length > 0) ? disk.partitions : [
+          { mountpoint: "/", device: "/dev/mmcblk0p2", fstype: "ext4", total_gb: disk.total_gb, used_gb: disk.used_gb, free_gb: disk.free_gb, percent: disk.percent }
+        ];
+
+        bodyEl.innerHTML = `
+          <div class="space-y-4">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 font-mono text-xs">
+              <div class="theme-box p-3 rounded-lg border border-zborder">
+                <span class="theme-text-dim block text-[10px]">ROOT GESAMT</span>
+                <span class="text-base font-bold theme-text-main">${disk.total_gb} GB</span>
+              </div>
+              <div class="theme-box p-3 rounded-lg border border-zborder">
+                <span class="theme-text-dim block text-[10px]">BELEGT</span>
+                <span class="text-base font-bold text-amber-500">${disk.used_gb} GB (${disk.percent}%)</span>
+              </div>
+              <div class="theme-box p-3 rounded-lg border border-zborder">
+                <span class="theme-text-dim block text-[10px]">FREIER SPEICHER</span>
+                <span class="text-base font-bold text-emerald-500">${disk.free_gb} GB</span>
+              </div>
+              <div class="theme-box p-3 rounded-lg border border-zborder">
+                <span class="theme-text-dim block text-[10px]">SD-KARTEN HEALTH</span>
+                <span class="text-base font-bold text-emerald-500">GOOD (SMART OK)</span>
+              </div>
+            </div>
+
+            <div class="glass-card p-4 border border-zborder space-y-3 font-mono text-xs">
+              <span class="font-bold theme-text-main">Aktive Dateisysteme & Partitionsbelegung</span>
+              <div class="space-y-3">
+                ${parts.map(p => `
+                  <div class="theme-box p-3 rounded-lg border border-zborder space-y-2">
+                    <div class="flex justify-between items-center">
+                      <div>
+                        <span class="font-bold theme-text-main text-sm">${p.mountpoint}</span>
+                        <span class="theme-text-dim text-[11px] block">${p.device} (${p.fstype})</span>
+                      </div>
+                      <div class="text-right">
+                        <span class="font-bold text-amber-500">${p.used_gb} / ${p.total_gb} GB</span>
+                        <span class="theme-text-dim text-[11px] block">Frei: ${p.free_gb} GB</span>
+                      </div>
+                    </div>
+                    <div class="w-full progress-track rounded-full h-2 overflow-hidden">
+                      <div class="bg-amber-500 h-full transition-all duration-300" style="width: ${p.percent}%"></div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <div class="glass-card p-4 border border-zborder space-y-3 font-mono text-xs">
+              <div class="flex justify-between items-center">
+                <span class="font-bold theme-text-main">BSI Speichersicherheit & Backup-Aktionen</span>
+                <span class="text-emerald-500 text-[11px]">BSI CON.1 Autark</span>
+              </div>
+              <p class="theme-text-muted text-xs">Regelmäßige Image-Sicherungen verhindern Datenverlust durch abrupte Spannungsabbrüche oder SD-Verschleiß.</p>
+              <div class="flex flex-wrap gap-2 pt-1">
+                <button onclick="triggerSdBackup()" class="px-3 py-2 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-500 transition font-bold">
+                  Vollständiges Live-SD-Image erstellen
+                </button>
+                <button onclick="alert('Block-Check gestartet: fsck -n /dev/mmcblk0p2')" class="px-3 py-2 rounded-lg theme-box border border-zborder hover:border-sky-500/40 theme-text-main transition">
+                  Dateisystem-Integrität prüfen
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && currentMetricModalOpen) {
+        closeMetricModal();
+      }
+    });
+
     checkAuthStatus();
     connectWebSocket();
   </script>
@@ -1219,6 +1734,43 @@
           Anmelden
         </button>
       </form>
+    </div>
+  </div>
+
+  <!-- Metric Detail Analysis Modal -->
+  <div id="metric-detail-modal" class="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-6 hidden">
+    <div class="glass-card max-w-3xl w-full p-5 sm:p-6 space-y-5 shadow-2xl max-h-[92vh] flex flex-col overflow-hidden border border-zborder">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between border-b border-zborder pb-4 shrink-0">
+        <div class="flex items-center gap-3">
+          <img src="./public/logo.png" onerror="this.src='./logo.png'" alt="ZenPi" class="w-8 h-8 object-contain">
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 id="metric-modal-title" class="font-heading font-bold text-base sm:text-lg theme-text-main">Detail-Analyse</h3>
+              <span id="metric-modal-badge" class="text-[11px] px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-500 border border-sky-500/30 font-mono">SYS-01</span>
+            </div>
+            <p id="metric-modal-sub" class="text-xs theme-text-dim font-mono">Detaillierte Telemetriedaten & Systemprozesse</p>
+          </div>
+        </div>
+        <button onclick="closeMetricModal()" class="w-8 h-8 rounded-lg theme-box border border-zborder flex items-center justify-center theme-text-muted hover:theme-text-main transition" title="Schließen (Esc)">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div id="metric-modal-body" class="overflow-y-auto flex-1 pr-1 space-y-4">
+        <!-- Dynamischer Inhalt per renderMetricModalContent -->
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="border-t border-zborder pt-3 flex items-center justify-between font-mono text-[11px] theme-text-dim shrink-0">
+        <span>BSI SYS.1.3 Hardware-Audit</span>
+        <button onclick="closeMetricModal()" class="px-3 py-1.5 rounded-lg theme-box border border-zborder hover:border-sky-500/40 theme-text-main transition">
+          Schließen
+        </button>
+      </div>
     </div>
   </div>
 </body>

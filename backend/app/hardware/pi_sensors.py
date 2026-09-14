@@ -93,6 +93,25 @@ def get_system_telemetry() -> dict:
     boot_time = psutil.boot_time()
     uptime_seconds = int(time.time() - boot_time)
     
+    disk_parts = []
+    try:
+        for part in psutil.disk_partitions(all=False):
+            try:
+                usage = psutil.disk_usage(part.mountpoint)
+                disk_parts.append({
+                    "device": part.device,
+                    "mountpoint": part.mountpoint,
+                    "fstype": part.fstype,
+                    "total_gb": round(usage.total / (1024**3), 2),
+                    "used_gb": round(usage.used / (1024**3), 2),
+                    "free_gb": round(usage.free / (1024**3), 2),
+                    "percent": usage.percent,
+                })
+            except Exception:
+                pass
+    except Exception:
+        pass
+
     return {
         "timestamp": time.time(),
         "is_pi": IS_RASPBERRY_PI,
@@ -110,6 +129,8 @@ def get_system_telemetry() -> dict:
             "total_mb": round(mem.total / (1024 * 1024), 1),
             "used_mb": round(mem.used / (1024 * 1024), 1),
             "available_mb": round(mem.available / (1024 * 1024), 1),
+            "cached_mb": round(getattr(mem, "cached", 0) / (1024 * 1024), 1),
+            "buffers_mb": round(getattr(mem, "buffers", 0) / (1024 * 1024), 1),
             "percent": mem.percent,
         },
         "swap": {
@@ -122,6 +143,7 @@ def get_system_telemetry() -> dict:
             "used_gb": round(disk.used / (1024**3), 2),
             "free_gb": round(disk.free / (1024**3), 2),
             "percent": disk.percent,
+            "partitions": disk_parts,
         },
         "network": {
             "bytes_sent": net_io.bytes_sent,

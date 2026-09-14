@@ -25,7 +25,7 @@ from app.hardware.pinout_data import (
     get_gpio_status_list, set_gpio_state, set_gpio_mode,
     scan_i2c_bus, scan_onewire_sensors
 )
-from app.api.services import list_services, control_service, list_docker_containers
+from app.api.services import list_services, control_service, list_docker_containers, get_running_processes
 from app.api.network_config import get_network_interfaces, scan_wifi_networks, get_pi_config_overview
 from app.api.camera import mjpeg_stream_generator, generate_mock_frame
 
@@ -201,6 +201,11 @@ def api_service_action(req: ServiceActionRequest, request: Request, auth=Depends
 @app.get("/api/docker/containers")
 def api_docker_containers(auth=Depends(require_auth)):
     return list_docker_containers()
+
+@app.get("/api/system/processes")
+def api_system_processes(sort: str = "cpu", limit: int = 15, auth=Depends(require_auth)):
+    return get_running_processes(limit=limit, sort_by=sort)
+
 
 @app.get("/api/network/interfaces")
 def api_network_interfaces(auth=Depends(require_auth)):

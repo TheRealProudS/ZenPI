@@ -1,5 +1,6 @@
 import subprocess
 import shutil
+import psutil
 from typing import List, Dict, Any
 
 POPULAR_SERVICES = [
@@ -94,3 +95,27 @@ def list_docker_containers() -> List[Dict[str, Any]]:
         {"id": "f82b7190", "name": "pihole", "image": "pihole/pihole:latest", "status": "Up 2 weeks", "state": "running"},
         {"id": "a3b4c5d6", "name": "vaultwarden", "image": "vaultwarden/server:latest", "status": "Exited (0) 2 hours ago", "state": "exited"},
     ]
+
+def get_running_processes(limit: int = 15, sort_by: str = "cpu") -> List[Dict[str, Any]]:
+    procs = []
+    for p in psutil.process_iter(['pid', 'name', 'username', 'cpu_percent', 'memory_percent', 'status', 'create_time']):
+        try:
+            info = p.info
+            procs.append({
+                "pid": info['pid'],
+                "name": info['name'] or "unknown",
+                "user": info['username'] or "root",
+                "cpu": round(info['cpu_percent'] or 0.0, 1),
+                "mem": round(info['memory_percent'] or 0.0, 1),
+                "status": info['status'] or "running",
+            })
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            continue
+    
+    if sort_by == "mem":
+        procs.sort(key=lambda x: x['mem'], reverse=True)
+    else:
+        procs.sort(key=lambda x: x['cpu'], reverse=True)
+        
+    return procs[:limit]
+
