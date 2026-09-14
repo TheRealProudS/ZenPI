@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="de" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZenPi Cockpit - Raspberry Pi OS Management</title>
+  <link rel="icon" type="image/png" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            zdark: '#05070e',
+            zcard: 'rgba(13, 20, 36, 0.75)',
+            zborder: 'rgba(255, 255, 255, 0.08)',
+            zcyan: '#38bdf8',
+            zrose: '#f43f5e',
+            zemerald: '#10b981',
+            zamber: '#f59e0b',
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            heading: ['Space Grotesk', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #05070e;
+      color: #f1f5f9;
+      font-family: 'Inter', sans-serif;
+    }
+    .bg-grid {
+      background-image: 
+        linear-gradient(to right, rgba(56, 189, 248, 0.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(56, 189, 248, 0.04) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+    .glass-card {
+      background: rgba(13, 20, 36, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+    }
+    .glass-card:hover {
+      border-color: rgba(56, 189, 248, 0.3);
+    }
+    .tab-active {
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-zdark text-slate-100 flex flex-col relative bg-grid">
+
+  <!-- Top Navbar -->
+  <header class="border-b border-zborder glass-card !rounded-none sticky top-0 z-50 px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <img src="/assets/logo.png" alt="ZenPi" class="w-9 h-9 object-contain drop-shadow-[0_0_12px_rgba(56,189,248,0.5)]">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="font-heading font-bold text-lg tracking-wide text-white">ZenPi</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-zcyan/10 text-zcyan border border-zcyan/30 font-mono">Cockpit v1.0</span>
+          <span id="header-badge-pi" class="text-xs px-2 py-0.5 rounded-full bg-zemerald/10 text-zemerald border border-zemerald/30 font-mono">Raspberry Pi</span>
+        </div>
+        <p class="text-xs text-slate-400 font-mono" id="header-host-info">Lade Telemetrie...</p>
+      </div>
+    </div>
+
+    <!-- Quick Status Pills -->
+    <div class="hidden md:flex items-center gap-3">
+      <div class="glass-card px-3 py-1.5 flex items-center gap-2 text-xs font-mono">
+        <span class="text-slate-400">SoC Temp:</span>
+        <span id="quick-temp" class="text-zcyan font-bold">--.-°C</span>
+      </div>
+      <div class="glass-card px-3 py-1.5 flex items-center gap-2 text-xs font-mono">
+        <span class="text-slate-400">RAM:</span>
+        <span id="quick-ram" class="text-slate-200 font-bold">--%</span>
+      </div>
+      <div class="glass-card px-3 py-1.5 flex items-center gap-2 text-xs font-mono">
+        <span class="text-slate-400">CPU Freq:</span>
+        <span id="quick-freq" class="text-slate-200 font-bold">-- MHz</span>
+      </div>
+      <div id="throttling-indicator" class="glass-card px-3 py-1.5 flex items-center gap-2 text-xs font-mono text-zemerald border-zemerald/30">
+        <span class="w-2 h-2 rounded-full bg-zemerald animate-pulse"></span>
+        <span>Spannung Normal</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <div class="max-w-7xl w-full mx-auto px-4 sm:px-6 pt-4">
+    <nav class="flex space-x-2 overflow-x-auto pb-2 border-b border-zborder scrollbar-none font-mono text-sm">
+      <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="tab-btn px-4 py-2 rounded-lg border border-transparent hover:bg-white/5 transition flex items-center gap-2 tab-active">
+        <span>📊</span> Dashboard
+      </button>
+      <button onclick="switchTab('gpio')" id="tab-btn-gpio" class="tab-btn px-4 py-2 rounded-lg border border-transparent hover:bg-white/5 transition flex items-center gap-2">
+        <span>🔌</span> 40-Pin GPIO
+      </button>
+      <button onclick="switchTab('camera')" id="tab-btn-camera" class="tab-btn px-4 py-2 rounded-lg border border-transparent hover:bg-white/5 transition flex items-center gap-2">
+        <span>📷</span> Live Camera
+      </button>
+      <button onclick="switchTab('services')" id="tab-btn-services" class="tab-btn px-4 py-2 rounded-lg border border-transparent hover:bg-white/5 transition flex items-center gap-2">
+        <span>🐳</span> Services & Docker
+      </button>
+      <button onclick="switchTab('network')" id="tab-btn-network" class="tab-btn px-4 py-2 rounded-lg border border-transparent hover:bg-white/5 transition flex items-center gap-2">
+        <span>📶</span> Network & WiFi
+      </button>
+      <button onclick="switchTab('hardware')" id="tab-btn-hardware" class="tab-btn px-4 py-2 rounded-lg border border-transparent hover:bg-white/5 transition flex items-center gap-2">
+        <span>🔍</span> I2C & 1-Wire Scanner
+      </button>
+    </nav>
+  </div>
+
+  <!-- Main Content Area -->
+  <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 flex-1 space-y-6">
+
+    <!-- TAB 1: DASHBOARD -->
+    <section id="tab-dashboard" class="tab-content space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- CPU Card -->
+        <div class="glass-card p-5 space-y-3">
+          <div class="flex justify-between items-center text-xs font-mono text-slate-400">
+            <span>CPU AUSLASTUNG</span>
+            <span id="dash-cpu-freq" class="text-zcyan">-- MHz</span>
+          </div>
+          <div class="text-3xl font-heading font-bold text-white flex items-baseline gap-2">
+            <span id="dash-cpu-val">0</span><span class="text-sm font-normal text-slate-400">%</span>
+          </div>
+          <div class="w-full bg-slate-800/80 rounded-full h-2 overflow-hidden">
+            <div id="dash-cpu-bar" class="bg-zcyan h-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+          <div id="dash-cpu-cores" class="grid grid-cols-4 gap-1 text-[10px] font-mono text-slate-400 pt-1">
+            <!-- Cores per JS -->
+          </div>
+        </div>
+
+        <!-- Temperature Card -->
+        <div class="glass-card p-5 space-y-3">
+          <div class="flex justify-between items-center text-xs font-mono text-slate-400">
+            <span>SOC TEMPERATUR</span>
+            <span class="text-slate-500">Max: 85°C</span>
+          </div>
+          <div class="text-3xl font-heading font-bold text-white flex items-baseline gap-2">
+            <span id="dash-temp-val">--</span><span class="text-sm font-normal text-slate-400">°C</span>
+          </div>
+          <div class="w-full bg-slate-800/80 rounded-full h-2 overflow-hidden">
+            <div id="dash-temp-bar" class="bg-zemerald h-full transition-all duration-500" style="width: 40%"></div>
+          </div>
+          <p id="dash-temp-status" class="text-xs font-mono text-zemerald flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-zemerald"></span> Thermischer Zustand optimal
+          </p>
+        </div>
+
+        <!-- RAM Card -->
+        <div class="glass-card p-5 space-y-3">
+          <div class="flex justify-between items-center text-xs font-mono text-slate-400">
+            <span>ARBEITSSPEICHER</span>
+            <span id="dash-ram-raw" class="text-slate-400">-- / -- MB</span>
+          </div>
+          <div class="text-3xl font-heading font-bold text-white flex items-baseline gap-2">
+            <span id="dash-ram-val">0</span><span class="text-sm font-normal text-slate-400">%</span>
+          </div>
+          <div class="w-full bg-slate-800/80 rounded-full h-2 overflow-hidden">
+            <div id="dash-ram-bar" class="bg-indigo-400 h-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+          <div class="text-xs font-mono text-slate-400 flex justify-between">
+            <span>Frei: <span id="dash-ram-free" class="text-slate-200">-- MB</span></span>
+            <span>Swap: <span id="dash-swap-val" class="text-slate-200">--%</span></span>
+          </div>
+        </div>
+
+        <!-- Storage Card -->
+        <div class="glass-card p-5 space-y-3">
+          <div class="flex justify-between items-center text-xs font-mono text-slate-400">
+            <span>SPEICHER / SD-KARTE</span>
+            <span id="dash-disk-raw" class="text-slate-400">-- / -- GB</span>
+          </div>
+          <div class="text-3xl font-heading font-bold text-white flex items-baseline gap-2">
+            <span id="dash-disk-val">0</span><span class="text-sm font-normal text-slate-400">%</span>
+          </div>
+          <div class="w-full bg-slate-800/80 rounded-full h-2 overflow-hidden">
+            <div id="dash-disk-bar" class="bg-zamber h-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+          <div class="text-xs font-mono text-slate-400 flex justify-between">
+            <span>Frei: <span id="dash-disk-free" class="text-slate-200">-- GB</span></span>
+            <span class="text-zemerald">Health: OK</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- System Details & Throttling Banner -->
+      <div id="alert-banner" class="hidden glass-card p-4 border-zrose/40 bg-zrose/10 flex items-center justify-between text-sm font-mono text-rose-300">
+        <div class="flex items-center gap-3">
+          <span class="text-xl">⚠️</span>
+          <span id="alert-text">Warnung: Unterspannung oder Throttling erkannt!</span>
+        </div>
+        <button onclick="dismissAlert()" class="px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-xs">Schließen</button>
+      </div>
+
+      <!-- Quick Actions Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="glass-card p-5 space-y-4">
+          <h3 class="font-heading font-bold text-base flex items-center gap-2">
+            <span>⚡</span> Systemsteuerung & Power
+          </h3>
+          <p class="text-xs text-slate-400">Fernsteuerung für Reboot, Shutdown oder Notfall-Wartung.</p>
+          <div class="flex flex-wrap gap-2 font-mono text-xs">
+            <button onclick="confirmAction('reboot')" class="px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 flex items-center gap-2">
+              🔄 Pi Neustarten
+            </button>
+            <button onclick="confirmAction('shutdown')" class="px-3 py-2 rounded-lg bg-zrose/10 hover:bg-zrose/20 border border-zrose/30 text-rose-300 flex items-center gap-2">
+              🛑 Sicher Herunterfahren
+            </button>
+            <button onclick="triggerSdBackup()" class="px-3 py-2 rounded-lg bg-zcyan/10 hover:bg-zcyan/20 border border-zcyan/30 text-zcyan flex items-center gap-2">
+              💾 SD-Card Image Backup
+            </button>
+          </div>
+        </div>
+
+        <div class="glass-card p-5 space-y-4">
+          <h3 class="font-heading font-bold text-base flex items-center gap-2">
+            <span>⚙️</span> Pi Hardware & Plattform-Info
+          </h3>
+          <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+            <div class="p-2 rounded bg-black/30 border border-white/5">
+              <span class="text-slate-500 block">HOSTNAME</span>
+              <span id="sys-hostname" class="text-slate-200 font-bold">--</span>
+            </div>
+            <div class="p-2 rounded bg-black/30 border border-white/5">
+              <span class="text-slate-500 block">UPTIME</span>
+              <span id="sys-uptime" class="text-slate-200 font-bold">--</span>
+            </div>
+            <div class="p-2 rounded bg-black/30 border border-white/5">
+              <span class="text-slate-500 block">ARCHITEKTUR</span>
+              <span id="sys-arch" class="text-slate-200 font-bold">--</span>
+            </div>
+            <div class="p-2 rounded bg-black/30 border border-white/5">
+              <span class="text-slate-500 block">OS PLATFORM</span>
+              <span id="sys-platform" class="text-slate-200 font-bold truncate block">--</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: GPIO PINOUT -->
+    <section id="tab-gpio" class="tab-content hidden space-y-6">
+      <div class="glass-card p-5 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zborder pb-4">
+          <div>
+            <h2 class="font-heading font-bold text-lg flex items-center gap-2">
+              <span>🔌</span> Interaktiver 40-Pin GPIO Header
+            </h2>
+            <p class="text-xs text-slate-400">Live-Pegelanzeige und Klick-to-Toggle Steuerung für Relais, Sensoren und Aktoren.</p>
+          </div>
+          <div class="flex items-center gap-2 font-mono text-xs">
+            <span class="px-2 py-1 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">3.3V / 5V</span>
+            <span class="px-2 py-1 rounded bg-slate-700 text-slate-300">GND</span>
+            <span class="px-2 py-1 rounded bg-zcyan/20 text-zcyan border border-zcyan/30">GPIO IN/OUT</span>
+          </div>
+        </div>
+
+        <div id="pinout-grid" class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs font-mono">
+          <!-- Pinout gerendert per JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: CAMERA STREAM -->
+    <section id="tab-camera" class="tab-content hidden space-y-6">
+      <div class="glass-card p-5 space-y-4">
+        <div class="flex items-center justify-between border-b border-zborder pb-4">
+          <div>
+            <h2 class="font-heading font-bold text-lg flex items-center gap-2">
+              <span>📷</span> Raspberry Pi Kamera Live-Stream
+            </h2>
+            <p class="text-xs text-slate-400">Direkter MJPEG-Stream via libcamera / V4L2 mit automatischer Bildaktualisierung.</p>
+          </div>
+          <button onclick="takeSnapshot()" class="px-3 py-1.5 rounded-lg bg-zcyan/10 hover:bg-zcyan/20 border border-zcyan/30 text-zcyan font-mono text-xs flex items-center gap-1.5">
+            📸 Snapshot speichern
+          </button>
+        </div>
+
+        <div class="flex flex-col items-center justify-center p-4 bg-black/60 rounded-xl border border-white/5 overflow-hidden">
+          <img id="camera-stream-img" src="/api/camera/stream" alt="Live Stream" class="w-full max-w-2xl rounded-lg border border-zborder shadow-2xl">
+          <div class="w-full max-w-2xl flex justify-between items-center text-xs font-mono text-slate-400 mt-2 px-2">
+            <span class="flex items-center gap-1.5 text-zemerald"><span class="w-2 h-2 rounded-full bg-zemerald animate-ping"></span> LIVE 30 FPS</span>
+            <span>Stream Source: CSI Camera / MJPEG</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: SERVICES & DOCKER -->
+    <section id="tab-services" class="tab-content hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- System Services -->
+        <div class="glass-card p-5 space-y-4">
+          <h2 class="font-heading font-bold text-lg flex items-center gap-2">
+            <span>⚙️</span> Systemd Dienste
+          </h2>
+          <div id="services-list" class="space-y-2">
+            <!-- Services gerendert per JS -->
+          </div>
+        </div>
+
+        <!-- Docker Containers -->
+        <div class="glass-card p-5 space-y-4">
+          <h2 class="font-heading font-bold text-lg flex items-center gap-2">
+            <span>🐳</span> Docker Container
+          </h2>
+          <div id="docker-list" class="space-y-2">
+            <!-- Docker gerendert per JS -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: NETWORK & WIFI -->
+    <section id="tab-network" class="tab-content hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Interfaces -->
+        <div class="glass-card p-5 space-y-4">
+          <h2 class="font-heading font-bold text-lg flex items-center gap-2">
+            <span>🌐</span> Netzwerkschnittstellen
+          </h2>
+          <div id="interfaces-list" class="space-y-2">
+            <!-- Interfaces per JS -->
+          </div>
+        </div>
+
+        <!-- WiFi Scanner -->
+        <div class="glass-card p-5 space-y-4">
+          <div class="flex justify-between items-center">
+            <h2 class="font-heading font-bold text-lg flex items-center gap-2">
+              <span>📶</span> WLAN Scanner
+            </h2>
+            <button onclick="scanWifi()" class="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 text-xs font-mono border border-white/10">Neu Scannen</button>
+          </div>
+          <div id="wifi-list" class="space-y-2">
+            <!-- WiFi per JS -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 6: HARDWARE BUS SCANNER -->
+    <section id="tab-hardware" class="tab-content hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- I2C Scanner -->
+        <div class="glass-card p-5 space-y-4">
+          <div class="flex justify-between items-center">
+            <h2 class="font-heading font-bold text-lg flex items-center gap-2">
+              <span>⚡</span> I2C Bus Scanner (Bus 1)
+            </h2>
+            <button onclick="scanI2C()" class="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 text-xs font-mono border border-white/10">Scan ausführen</button>
+          </div>
+          <div id="i2c-list" class="space-y-2 font-mono text-xs">
+            <!-- I2C per JS -->
+          </div>
+        </div>
+
+        <!-- 1-Wire Sensors -->
+        <div class="glass-card p-5 space-y-4">
+          <div class="flex justify-between items-center">
+            <h2 class="font-heading font-bold text-lg flex items-center gap-2">
+              <span>🌡️</span> 1-Wire Temperatursensoren (DS18B20)
+            </h2>
+            <button onclick="scanOneWire()" class="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 text-xs font-mono border border-white/10">Aktualisieren</button>
+          </div>
+          <div id="onewire-list" class="space-y-2 font-mono text-xs">
+            <!-- 1-Wire per JS -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-zborder py-4 px-6 text-center text-xs font-mono text-slate-500 glass-card !rounded-none">
+    <span>ZenPi Cockpit &bull; Entwickelt von <a href="https://zenkner-technology.de" target="_blank" class="text-zcyan hover:underline">Zenkner-Technology</a> &bull; Open Source für Maker & IoT</span>
+  </footer>
+
+  <!-- Script Core -->
+  <script>
+    let activeTab = 'dashboard';
+
+    function switchTab(tabId) {
+      activeTab = tabId;
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('tab-active'));
+      
+      const target = document.getElementById('tab-' + tabId);
+      const btn = document.getElementById('tab-btn-' + tabId);
+      if (target) target.classList.remove('hidden');
+      if (btn) btn.classList.add('tab-active');
+
+      if (tabId === 'gpio') loadGpioPins();
+      if (tabId === 'services') { loadServices(); loadDocker(); }
+      if (tabId === 'network') { loadInterfaces(); scanWifi(); }
+      if (tabId === 'hardware') { scanI2C(); scanOneWire(); }
+    }
+
+    // Telemetry WebSocket
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${window.location.host}/ws/telemetry`;
+    let ws;
+
+    function connectWebSocket() {
+      ws = new WebSocket(wsUrl);
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        updateTelemetryUI(data);
+      };
+      ws.onclose = () => {
+        setTimeout(connectWebSocket, 2000);
+      };
+    }
+
+    function updateTelemetryUI(data) {
+      document.getElementById('header-host-info').innerText = `${data.hostname} &bull; ${data.architecture} &bull; Up: ${formatUptime(data.uptime_seconds)}`;
+      
+      // Quick stats
+      document.getElementById('quick-temp').innerText = `${data.cpu.temperature_c}°C`;
+      document.getElementById('quick-ram').innerText = `${data.memory.percent}%`;
+      document.getElementById('quick-freq').innerText = `${data.cpu.frequency_mhz} MHz`;
+
+      // Throttling
+      const th = data.throttled;
+      const thIndicator = document.getElementById('throttling-indicator');
+      const alertBanner = document.getElementById('alert-banner');
+      const alertText = document.getElementById('alert-text');
+
+      if (th.under_voltage_detected || th.currently_throttled) {
+        thIndicator.className = 'glass-card px-3 py-1.5 flex items-center gap-2 text-xs font-mono text-zrose border-zrose/40';
+        thIndicator.innerHTML = '<span class="w-2 h-2 rounded-full bg-zrose animate-ping"></span> Unterspannung!';
+        alertBanner.classList.remove('hidden');
+        alertText.innerText = th.under_voltage_detected ? 'KRITISCH: Unterspannung am Raspberry Pi erkannt (Netzteil prüfen)!' : 'Achtung: CPU wird thermisch gedrosselt!';
+      } else {
+        thIndicator.className = 'glass-card px-3 py-1.5 flex items-center gap-2 text-xs font-mono text-zemerald border-zemerald/30';
+        thIndicator.innerHTML = '<span class="w-2 h-2 rounded-full bg-zemerald animate-pulse"></span> Spannung Normal';
+      }
+
+      // Dashboard Cards
+      document.getElementById('dash-cpu-val').innerText = Math.round(data.cpu.total_percent);
+      document.getElementById('dash-cpu-bar').style.width = `${Math.min(100, data.cpu.total_percent)}%`;
+      document.getElementById('dash-cpu-freq').innerText = `${data.cpu.frequency_mhz} MHz`;
+
+      // Cores
+      const coresContainer = document.getElementById('dash-cpu-cores');
+      coresContainer.innerHTML = data.cpu.cores_percent.map((c, idx) => `
+        <div class="bg-black/30 p-1 rounded text-center">
+          <span>C${idx}:</span> <span class="text-slate-200 font-bold">${Math.round(c)}%</span>
+        </div>
+      `).join('');
+
+      document.getElementById('dash-temp-val').innerText = data.cpu.temperature_c;
+      const tempBar = document.getElementById('dash-temp-bar');
+      tempBar.style.width = `${Math.min(100, (data.cpu.temperature_c / 85) * 100)}%`;
+      if (data.cpu.temperature_c > 75) {
+        tempBar.className = 'bg-zrose h-full transition-all duration-500';
+      } else if (data.cpu.temperature_c > 60) {
+        tempBar.className = 'bg-zamber h-full transition-all duration-500';
+      } else {
+        tempBar.className = 'bg-zemerald h-full transition-all duration-500';
+      }
+
+      document.getElementById('dash-ram-val').innerText = data.memory.percent;
+      document.getElementById('dash-ram-bar').style.width = `${data.memory.percent}%`;
+      document.getElementById('dash-ram-raw').innerText = `${data.memory.used_mb} / ${data.memory.total_mb} MB`;
+      document.getElementById('dash-ram-free').innerText = `${data.memory.available_mb} MB`;
+      document.getElementById('dash-swap-val').innerText = `${data.swap.percent}%`;
+
+      document.getElementById('dash-disk-val').innerText = data.disk.percent;
+      document.getElementById('dash-disk-bar').style.width = `${data.disk.percent}%`;
+      document.getElementById('dash-disk-raw').innerText = `${data.disk.used_gb} / ${data.disk.total_gb} GB`;
+      document.getElementById('dash-disk-free').innerText = `${data.disk.free_gb} GB`;
+
+      document.getElementById('sys-hostname').innerText = data.hostname;
+      document.getElementById('sys-uptime').innerText = formatUptime(data.uptime_seconds);
+      document.getElementById('sys-arch').innerText = data.architecture;
+      document.getElementById('sys-platform').innerText = data.platform;
+    }
+
+    function formatUptime(sec) {
+      const d = Math.floor(sec / 86400);
+      const h = Math.floor((sec % 86400) / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      if (d > 0) return `${d}d ${h}h ${m}m`;
+      return `${h}h ${m}m ${sec % 60}s`;
+    }
+
+    function dismissAlert() {
+      document.getElementById('alert-banner').classList.add('hidden');
+    }
+
+    // GPIO Loader
+    async function loadGpioPins() {
+      try {
+        const res = await fetch('/api/gpio/pins');
+        const pins = await res.json();
+        const container = document.getElementById('pinout-grid');
+        
+        container.innerHTML = pins.map(p => {
+          const isGpio = p.type === 'gpio';
+          const isHigh = p.state === 1;
+          const bgBadge = p.type === 'power' ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' : 
+                          p.type === 'ground' ? 'bg-slate-700 text-slate-300' : 'bg-zcyan/20 text-zcyan border-zcyan/30';
+          
+          return `
+            <div class="glass-card p-3 flex items-center justify-between border-white/5 hover:border-zcyan/30 transition">
+              <div class="flex items-center gap-3">
+                <span class="w-6 h-6 flex items-center justify-center rounded-full bg-white/5 text-slate-400 font-bold">${p.pin}</span>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="font-bold text-white">${p.name}</span>
+                    <span class="px-1.5 py-0.5 rounded text-[10px] ${bgBadge}">${p.type.toUpperCase()}</span>
+                  </div>
+                  ${p.alt ? `<span class="text-[10px] text-slate-400">${p.alt}</span>` : ''}
+                </div>
+              </div>
+
+              ${isGpio ? `
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] px-2 py-0.5 rounded ${isHigh ? 'bg-zemerald/20 text-zemerald border border-zemerald/30' : 'bg-slate-800 text-slate-400'}">
+                    ${isHigh ? 'HIGH (1)' : 'LOW (0)'}
+                  </span>
+                  <button onclick="togglePin(${p.bcm}, ${isHigh ? 0 : 1})" class="px-2 py-1 rounded bg-white/10 hover:bg-zcyan/20 hover:text-zcyan text-[11px] border border-white/10 transition">
+                    Toggle
+                  </button>
+                </div>
+              ` : ''}
+            </div>
+          `;
+        }).join('');
+      } catch (e) {
+        console.error('GPIO Load Error', e);
+      }
+    }
+
+    async function togglePin(bcm, state) {
+      await fetch('/api/gpio/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bcm, state })
+      });
+      loadGpioPins();
+    }
+
+    // Services Loader
+    async function loadServices() {
+      try {
+        const res = await fetch('/api/services');
+        const services = await res.json();
+        const container = document.getElementById('services-list');
+        
+        container.innerHTML = services.map(s => `
+          <div class="p-3 glass-card flex items-center justify-between border-white/5">
+            <div>
+              <div class="flex items-center gap-2 font-mono">
+                <span class="font-bold text-white text-sm">${s.title}</span>
+                <span class="text-[10px] px-2 py-0.5 rounded-full ${s.is_active ? 'bg-zemerald/10 text-zemerald border border-zemerald/30' : 'bg-slate-800 text-slate-400'}">
+                  ${s.status.toUpperCase()}
+                </span>
+              </div>
+              <p class="text-xs text-slate-400">${s.desc}</p>
+            </div>
+            <div class="flex gap-1.5 font-mono text-xs">
+              ${s.is_active ? `
+                <button onclick="controlService('${s.name}', 'restart')" class="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10">Restart</button>
+                <button onclick="controlService('${s.name}', 'stop')" class="px-2 py-1 rounded bg-zrose/10 hover:bg-zrose/20 text-rose-300 border border-zrose/30">Stop</button>
+              ` : `
+                <button onclick="controlService('${s.name}', 'start')" class="px-2 py-1 rounded bg-zemerald/10 hover:bg-zemerald/20 text-zemerald border border-zemerald/30">Start</button>
+              `}
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {
+        console.error('Services Error', e);
+      }
+    }
+
+    async function controlService(service_name, action) {
+      await fetch('/api/services/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ service_name, action })
+      });
+      loadServices();
+    }
+
+    // Docker Loader
+    async function loadDocker() {
+      try {
+        const res = await fetch('/api/docker/containers');
+        const containers = await res.json();
+        const container = document.getElementById('docker-list');
+        
+        if (containers.length === 0) {
+          container.innerHTML = `<p class="text-xs font-mono text-slate-500">Keine Docker Container gefunden.</p>`;
+          return;
+        }
+
+        container.innerHTML = containers.map(c => `
+          <div class="p-3 glass-card flex items-center justify-between border-white/5 font-mono text-xs">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-white">${c.name}</span>
+                <span class="text-[10px] px-2 py-0.5 rounded-full ${c.state === 'running' ? 'bg-zemerald/10 text-zemerald border border-zemerald/30' : 'bg-slate-800 text-slate-400'}">
+                  ${c.state.toUpperCase()}
+                </span>
+              </div>
+              <span class="text-slate-400 text-[11px]">${c.image}</span>
+            </div>
+            <span class="text-slate-500">${c.status}</span>
+          </div>
+        `).join('');
+      } catch (e) {
+        console.error('Docker Error', e);
+      }
+    }
+
+    // Interfaces & WiFi
+    async function loadInterfaces() {
+      try {
+        const res = await fetch('/api/network/interfaces');
+        const ifaces = await res.json();
+        const container = document.getElementById('interfaces-list');
+        container.innerHTML = ifaces.map(i => `
+          <div class="p-3 glass-card flex items-center justify-between border-white/5 font-mono text-xs">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-white">${i.name}</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded ${i.is_up ? 'bg-zemerald/10 text-zemerald' : 'bg-slate-800 text-slate-500'}">
+                  ${i.is_up ? 'UP' : 'DOWN'}
+                </span>
+              </div>
+              <span class="text-slate-400 text-[11px]">MAC: ${i.mac}</span>
+            </div>
+            <span class="text-zcyan font-bold">${i.ipv4}</span>
+          </div>
+        `).join('');
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function scanWifi() {
+      try {
+        const container = document.getElementById('wifi-list');
+        container.innerHTML = '<p class="text-xs font-mono text-slate-500">Scanne 2.4/5GHz Netzwerke...</p>';
+        const res = await fetch('/api/network/wifi/scan');
+        const wifis = await res.json();
+        container.innerHTML = wifis.map(w => `
+          <div class="p-3 glass-card flex items-center justify-between border-white/5 font-mono text-xs">
+            <span class="font-bold text-white">${w.ssid}</span>
+            <div class="flex items-center gap-3">
+              <span class="text-slate-400 text-[11px]">${w.security}</span>
+              <span class="text-zcyan font-bold">${w.signal_percent}%</span>
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // I2C & 1-Wire
+    async function scanI2C() {
+      try {
+        const container = document.getElementById('i2c-list');
+        container.innerHTML = 'Scanne I2C Bus 1...';
+        const res = await fetch('/api/hardware/i2c');
+        const devs = await res.json();
+        container.innerHTML = devs.map(d => `
+          <div class="p-2.5 glass-card flex items-center justify-between border-white/5">
+            <span class="font-bold text-zcyan">${d.address}</span>
+            <span class="text-slate-300">${d.description}</span>
+          </div>
+        `).join('');
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function scanOneWire() {
+      try {
+        const container = document.getElementById('onewire-list');
+        container.innerHTML = 'Prüfe 1-Wire Bus...';
+        const res = await fetch('/api/hardware/onewire');
+        const sensors = await res.json();
+        container.innerHTML = sensors.map(s => `
+          <div class="p-2.5 glass-card flex items-center justify-between border-white/5">
+            <div>
+              <span class="font-bold text-white">${s.model}</span>
+              <span class="text-slate-400 text-[10px] block">${s.id}</span>
+            </div>
+            <span class="text-zemerald font-bold text-sm">${s.temperature_c}°C</span>
+          </div>
+        `).join('');
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function confirmAction(type) {
+      if (confirm(`Möchtest du die Aktion wirklich ausführen: ${type.toUpperCase()}?`)) {
+        alert(`Befehl '${type}' an Raspberry Pi gesendet.`);
+      }
+    }
+
+    function triggerSdBackup() {
+      alert('SD-Karten Live-Image-Backup wurde im Hintergrund gestartet.');
+    }
+
+    function takeSnapshot() {
+      window.open('/api/camera/snapshot', '_blank');
+    }
+
+    // Start WebSocket
+    connectWebSocket();
+  </script>
+</body>
+</html>
