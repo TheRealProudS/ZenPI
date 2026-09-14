@@ -14,9 +14,9 @@ def get_network_interfaces() -> List[Dict[str, Any]]:
         ipv4 = None
         mac = None
         for addr in addr_list:
-            if addr.family == 2:  # AF_INET
+            if addr.family == 2:
                 ipv4 = addr.address
-            elif addr.family == 17 or "MAC" in str(addr.family):  # Link layer / MAC
+            elif addr.family == 17 or "MAC" in str(addr.family):
                 mac = addr.address
         
         stat = stats.get(iface_name)
@@ -34,7 +34,6 @@ def get_network_interfaces() -> List[Dict[str, Any]]:
     return interfaces
 
 def scan_wifi_networks() -> List[Dict[str, Any]]:
-    # Echter nmcli / iwlist Scan
     if shutil.which("nmcli"):
         try:
             res = subprocess.run(["nmcli", "-t", "-f", "SSID,SIGNAL,SECURITY", "device", "wifi", "list"], capture_output=True, text=True, timeout=5)
@@ -57,7 +56,6 @@ def scan_wifi_networks() -> List[Dict[str, Any]]:
                     return networks
         except Exception:
             pass
-    # Mock WiFis
     return [
         {"ssid": "ZenTech-Lab-5G", "signal_percent": 94, "security": "WPA2/WPA3"},
         {"ssid": "FritzBox-IoT-Guest", "signal_percent": 78, "security": "WPA2"},

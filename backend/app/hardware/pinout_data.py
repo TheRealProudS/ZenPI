@@ -2,7 +2,6 @@ import os
 import subprocess
 from typing import Dict, List, Any
 
-# 40-Pin Header Definition für Raspberry Pi (3, 4, 5, Zero 2W)
 RPI_40_PIN_HEADER = [
     {"pin": 1, "name": "3.3V Power", "type": "power", "bcm": None},
     {"pin": 2, "name": "5V Power", "type": "power", "bcm": None},
@@ -46,7 +45,6 @@ RPI_40_PIN_HEADER = [
     {"pin": 40, "name": "GPIO 21", "type": "gpio", "bcm": 21, "alt": "PCM DOUT"},
 ]
 
-# Lokaler Zustandsspeicher für GPIO-Pins (für Mock & Live-Cache)
 _gpio_state_cache: Dict[int, Dict[str, Any]] = {}
 
 for p in RPI_40_PIN_HEADER:
@@ -79,8 +77,6 @@ def set_gpio_state(bcm: int, state: int) -> bool:
         return False
     _gpio_state_cache[bcm]["state"] = 1 if state else 0
     _gpio_state_cache[bcm]["mode"] = "OUTPUT"
-    
-    # Echter gpiod Hardware-Befehl falls auf Pi vorhanden
     try:
         subprocess.run(["gpioset", "0", f"{bcm}={1 if state else 0}"], capture_output=True, timeout=1)
     except Exception:
@@ -98,7 +94,6 @@ def set_gpio_mode(bcm: int, mode: str) -> bool:
 
 def scan_i2c_bus(bus: int = 1) -> List[Dict[str, Any]]:
     devices = []
-    # Echter Scan via i2cdetect
     try:
         res = subprocess.run(["i2cdetect", "-y", str(bus)], capture_output=True, text=True, timeout=2)
         if res.returncode == 0:
@@ -112,8 +107,6 @@ def scan_i2c_bus(bus: int = 1) -> List[Dict[str, Any]]:
             return devices
     except Exception:
         pass
-    
-    # Mock-Devices für Tests & Demonstration
     return [
         {"address": "0x3c", "bus": bus, "description": "SSD1306 / SH1106 OLED Display (128x64)"},
         {"address": "0x76", "bus": bus, "description": "BMP280 / BME280 Klimasensor (Temp/Pressure/Hum)"},
@@ -152,7 +145,6 @@ def scan_onewire_sensors() -> List[Dict[str, Any]]:
                 return sensors
         except Exception:
             pass
-    # Mock
     return [
         {"id": "28-00000abc1234", "model": "DS18B20", "temperature_c": 21.8},
         {"id": "28-00000fed5678", "model": "DS18B20", "temperature_c": 22.4}

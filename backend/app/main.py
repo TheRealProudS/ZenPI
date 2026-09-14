@@ -1,7 +1,12 @@
 import os
 import sys
-import asyncio
 from pathlib import Path
+
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+
+import asyncio
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Response
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -32,7 +37,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# API Schemas
 class GpioToggleRequest(BaseModel):
     bcm: int
     state: int
@@ -45,7 +49,6 @@ class ServiceActionRequest(BaseModel):
     service_name: str
     action: str
 
-# Endpunkte
 @app.get("/api/system/telemetry")
 def api_telemetry():
     return get_system_telemetry()
@@ -113,7 +116,6 @@ def api_camera_snapshot():
     frame = generate_mock_frame()
     return Response(content=frame, media_type="image/jpeg")
 
-# WebSocket für Live-Telemetrie im Sekundentakt
 @app.websocket("/ws/telemetry")
 async def websocket_telemetry(websocket: WebSocket):
     await websocket.accept()
@@ -125,7 +127,6 @@ async def websocket_telemetry(websocket: WebSocket):
     except WebSocketDisconnect:
         pass
 
-# Static Frontend Files
 frontend_dir = Path(__file__).resolve().parent.parent.parent / "frontend"
 if (frontend_dir / "index.html").exists():
     app.mount("/assets", StaticFiles(directory=str(frontend_dir / "public")), name="static")

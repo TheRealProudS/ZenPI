@@ -35,7 +35,6 @@ def get_cpu_temp() -> float:
         try:
             res = subprocess.run(["vcgencmd", "measure_temp"], capture_output=True, text=True, timeout=1)
             if res.returncode == 0:
-                # format: temp=43.5'C
                 line = res.stdout.strip()
                 val = line.split("=")[1].replace("'C", "")
                 return float(val)
@@ -47,7 +46,6 @@ def get_cpu_temp() -> float:
                 return round(val, 1)
         except Exception:
             pass
-    # Fallback / Mock
     try:
         temps = psutil.sensors_temperatures()
         if temps:
@@ -56,7 +54,6 @@ def get_cpu_temp() -> float:
                     return float(entries[0].current)
     except Exception:
         pass
-    # Simulierter realistischer Wert
     base_temp = 42.5
     offset = (int(time.time()) % 10) * 0.4
     return round(base_temp + offset, 1)
@@ -93,7 +90,6 @@ def get_system_telemetry() -> dict:
     cpu_cores = psutil.cpu_percent(interval=None, percpu=True)
     
     net_io = psutil.net_io_counters()
-    
     boot_time = psutil.boot_time()
     uptime_seconds = int(time.time() - boot_time)
     

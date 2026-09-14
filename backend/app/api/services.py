@@ -59,7 +59,6 @@ def control_service(service_name: str, action: str) -> bool:
         except Exception:
             pass
     
-    # Mock fallback
     if action == "start":
         _mock_service_states[service_name] = "active"
     elif action == "stop":
@@ -90,7 +89,6 @@ def list_docker_containers() -> List[Dict[str, Any]]:
                 return containers
         except Exception:
             pass
-    # Mock Container
     return [
         {"id": "c1a93e81", "name": "portainer-ce", "image": "portainer/portainer-ce:latest", "status": "Up 4 days", "state": "running"},
         {"id": "f82b7190", "name": "pihole", "image": "pihole/pihole:latest", "status": "Up 2 weeks", "state": "running"},
