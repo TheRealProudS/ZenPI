@@ -500,9 +500,8 @@
     }
 
     function updateTelemetryUI(data) {
-      document.getElementById('header-host-info').innerText = `${data.hostname} &bull; ${data.architecture} &bull; Up: ${formatUptime(data.uptime_seconds)}`;
+      document.getElementById('header-host-info').innerText = `${data.hostname} - ${data.architecture} - Up: ${formatUptime(data.uptime_seconds)}`;
       
-      // Quick stats
       document.getElementById('quick-temp').innerText = `${data.cpu.temperature_c}°C`;
       document.getElementById('quick-ram').innerText = `${data.memory.percent}%`;
       document.getElementById('quick-freq').innerText = `${data.cpu.frequency_mhz} MHz`;
