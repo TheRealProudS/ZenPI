@@ -52,3 +52,15 @@ python backend/app/main.py
 ```
 
 Das Cockpit startet standardmäßig auf Port `8443`.
+
+---
+
+## Lizenz
+
+ZenPi Non-Commercial Software License (ZNC-1.0)
+
+- **Private Nutzung & Modifikation**: Kostenfrei für persönliche, private und Bildungszwecke gestattet.
+- **Kommerzielle Nutzung**: Eine kommerzielle Nutzung, Verwertung oder Integration ist vorab mit dem Entwickler abzustimmen.
+- Kontakt: `cyrill-pascal.zenkner@zenkner-technology.de` | [Zenkner-Technology](https://www.zenkner-technology.de)
+
+Details siehe [LICENSE](LICENSE).
