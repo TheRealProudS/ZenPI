@@ -1,16 +1,28 @@
-[Unit]
+﻿[Unit]
 Description=ZenPi Cockpit - Web Management Suite
 After=network.target network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-User=root
+User=zenpi
+Group=zenpi
 WorkingDirectory=/opt/zenpi/backend
 ExecStart=/opt/zenpi/venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8443
 Restart=always
 RestartSec=3
 Environment=PYTHONUNBUFFERED=1
+Environment=ZENPI_CONFIG_PATH=/etc/zenpi/config.json
+Environment=ZENPI_LOG_DIR=/var/log/zenpi
+
+# Hardening per BSI SYS.1.3
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/log/zenpi /etc/zenpi
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+NoNewPrivileges=true
 
 [Install]
 WantedBy=multi-user.target
